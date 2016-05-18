@@ -27,7 +27,7 @@ print "function drawRegionsMap() {"
 print "var data = google.visualization.arrayToDataTable(["
 print "['Country', 'Popularity'],"
 
-for city, count in counts.items():
+for city, count in sorted(counts.items(), key=lambda e:e[1], reverse=True):
   print "['%s', %d],"%(city, count)
 
 print "]);"

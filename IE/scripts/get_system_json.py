@@ -32,17 +32,20 @@
 import os
 import sys
 import json
+from timex_util import * 
 import xml.etree.ElementTree as et
 
 arg_types = {'Injure': ('Agent', 'Victim'), 'Attack': ('Attacker', 'Target'), 'Die': ('Agent', 'Victim')}
 
 rootdir = 'heng_ie_output/output_ere/'
 
-MAX = 10000
+MAX = 10
 
-for _,f in enumerate(os.listdir(rootdir)):
-  #if i >= MAX: 
-  #  continue
+dates = json.load(open('dates.json'))
+
+for num,f in enumerate(os.listdir(rootdir)):
+#  if num >= MAX: 
+#    continue
   if f.endswith('xml'):
     i = f.split('.')[0]
     sys.stderr.write('%s\n'%f)
@@ -52,6 +55,26 @@ for _,f in enumerate(os.listdir(rootdir)):
     except et.ParseError:
       sys.stderr.write('Error parsing %s\n'%f)
       continue
+    #Date and time from Timex extractor
+    if i in dates:
+      datetimes = dates[i]
+      if datetimes is not None:
+        date_json = { "date-and-time": { "date": "", "time-day": {"endIndex":-1,"startIndex":-1,"value":""} } }
+        for typ, datetime in datetimes:
+          updated = False
+          date = get_day(typ, datetime)
+	  if date is not None:
+  	    date_json['date-and-time']['date'] = date
+            updated = True
+	  time = get_time(typ, datetime)
+ 	  if time is not None:
+	    date_json['date-and-time']['time-day']['value'] = time
+	    date_json['date-and-time']['time-day']['startIndex'] = 0
+	    date_json['date-and-time']['time-day']['endIndex'] = 0
+            updated = True
+          if updated:
+            print '%s\t%s'%(i, json.dumps(date_json))
+      
     for event in doc.findall('event'):
       updated = False
       event_json = {  "circumstances": { "type-of-gun": {"endIndex":-1,"startIndex":-1,"value":""} }, 
@@ -59,7 +82,9 @@ for _,f in enumerate(os.listdir(rootdir)):
 			      "city": {"endIndex":-1,"startIndex":-1,"value":""}, 
 			      "clock-time": {"endIndex":-1,"startIndex":-1,"value":""}, 
 			      "details": {"endIndex":-1,"startIndex":-1,"value":""}, 
-			      "state": "", "time-day": {"endIndex":-1,"startIndex":-1,"value":""} }, 
+			      "state": "", 
+			      "date": "", 
+			      "time-day": {"endIndex":-1,"startIndex":-1,"value":""} }, 
 		      "shooter-section":[ { "name": {"endIndex":-1,"startIndex":-1,"value":""}, }], 
 		      "victim-section":[ { "name": {"endIndex":-1,"startIndex":-1,"value":""}, "victim-was": [] }]}
 
@@ -79,7 +104,7 @@ for _,f in enumerate(os.listdir(rootdir)):
 	  event_json['victim-section'][0]['victim-was'].append('injured')
 	  event_json['victim-section'][0]['victim-was'].append('killed')
 	  updated = True
-      
+   
 	shooter_type, victim_type = arg_types[etype]
         for arg in event.find('event_mention').findall('event_mention_argument'):
   	  if 'ROLE' in arg.attrib:
@@ -107,11 +132,11 @@ for _,f in enumerate(os.listdir(rootdir)):
 	      event_json['circumstances']['type-of-gun']['endIndex'] = eidx
 	      updated = True
 	    #Time of day
-	    if role == 'Time':
-	      event_json['date-and-time']['time-day']['value'] = name
-	      event_json['date-and-time']['time-day']['startIndex'] = sidx
-	      event_json['date-and-time']['time-day']['endIndex'] = eidx
-	      updated = True
+	    #if role == 'Time':
+	    #  event_json['date-and-time']['time-day']['value'] = name
+	    #  event_json['date-and-time']['time-day']['startIndex'] = sidx
+	    #  event_json['date-and-time']['time-day']['endIndex'] = eidx
+	    #  updated = True
 	    #Location details
 	    if role == 'Place':
 	      event_json['date-and-time']['details']['value'] = name
